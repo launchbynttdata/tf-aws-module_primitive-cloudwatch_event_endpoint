@@ -26,7 +26,7 @@ variable "description" {
   default     = null
 
   validation {
-    condition     = var.description == null || (length(var.description) >= 0 && length(var.description) <= 512)
+    condition     = var.description == null || length(var.description) <= 512
     error_message = "Description must be between 0 and 512 characters."
   }
 }

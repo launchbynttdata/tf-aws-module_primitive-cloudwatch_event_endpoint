@@ -122,8 +122,3 @@ endif
 clean:
 	-repo list | awk '{ print $1; }' | cut -d '/' -f1 | uniq | xargs rm -rf
 	find . -type l ! -exec test -e {} \; -print | xargs rm -rf
-
-.PHONY: init-clean
-init-clean:
-	rm -rf .git
-	git init --initial-branch=main

@@ -2,6 +2,9 @@ package testimpl
 
 import (
 	"context"
+	"net/url"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -14,6 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var eventEndpointARNPattern = regexp.MustCompile(`^arn:aws[^:]*:events:[a-z0-9-]+:[0-9]{12}:endpoint/.+$`)
+
 func getEventBridgeClient(t *testing.T, opts *terraform.Options) *eventbridge.Client {
 	region := terraform.Output(t, opts, "primary_region")
 	require.NotEmpty(t, region, "primary_region output required for API calls")
@@ -21,6 +26,18 @@ func getEventBridgeClient(t *testing.T, opts *terraform.Options) *eventbridge.Cl
 	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
 	require.NoError(t, err, "unable to load AWS config for region %s", region)
 	return eventbridge.NewFromConfig(cfg)
+}
+
+func eventBusNameFromARN(t *testing.T, eventBusARN string) string {
+	t.Helper()
+	require.NotEmpty(t, eventBusARN, "event bus ARN output must be set")
+
+	separatorIdx := strings.LastIndex(eventBusARN, "/")
+	require.Greater(t, separatorIdx, 0, "event bus ARN must contain resource name after '/'")
+
+	eventBusName := eventBusARN[separatorIdx+1:]
+	require.NotEmpty(t, eventBusName, "event bus ARN must include a non-empty event bus name")
+	return eventBusName
 }
 
 func TestComposableComplete(t *testing.T, ctx types.TestContext) {
@@ -32,14 +49,19 @@ func TestComposableComplete(t *testing.T, ctx types.TestContext) {
 		endpointURL := terraform.Output(t, opts, "endpoint_url")
 
 		assert.Equal(t, name, id, "id should equal name for EventBridge global endpoint")
-		require.NotEmpty(t, arn, "arn should be set")
-		require.NotEmpty(t, endpointURL, "endpoint_url should be set")
+		require.True(t, eventEndpointARNPattern.MatchString(arn), "arn should match EventBridge endpoint ARN format")
+
+		parsedEndpointURL, err := url.Parse(endpointURL)
+		require.NoError(t, err, "endpoint_url should be a valid URL")
+		assert.Equal(t, "https", parsedEndpointURL.Scheme, "endpoint_url should use HTTPS")
+		require.NotEmpty(t, parsedEndpointURL.Host, "endpoint_url should include a host")
 	})
 
 	t.Run("VerifyEndpointViaAWSAPI", func(t *testing.T) {
 		opts := ctx.TerratestTerraformOptions()
 		endpointName := terraform.Output(t, opts, "name")
 		expectedARN := terraform.Output(t, opts, "arn")
+		expectedEndpointURL := terraform.Output(t, opts, "endpoint_url")
 
 		client := getEventBridgeClient(t, opts)
 		output, err := client.DescribeEndpoint(context.Background(), &eventbridge.DescribeEndpointInput{
@@ -50,6 +72,7 @@ func TestComposableComplete(t *testing.T, ctx types.TestContext) {
 
 		assert.Equal(t, endpointName, aws.ToString(output.Name), "endpoint name should match")
 		assert.Equal(t, expectedARN, aws.ToString(output.Arn), "endpoint ARN should match Terraform output")
+		assert.Equal(t, expectedEndpointURL, aws.ToString(output.EndpointUrl), "endpoint URL should match Terraform output")
 		assert.Equal(t, "ACTIVE", string(output.State), "endpoint state should be ACTIVE")
 		require.Len(t, output.EventBuses, 2, "endpoint should have exactly two event buses")
 	})
@@ -86,9 +109,16 @@ func TestComposableComplete(t *testing.T, ctx types.TestContext) {
 		endpointID := aws.ToString(desc.EndpointId)
 		require.NotEmpty(t, endpointID, "DescribeEndpoint must return EndpointId for PutEvents")
 
-		// Send event to the global endpoint (write operation)
-		// Event bus name from example test.tfvars: example-global-endpoint-bus
-		eventBusName := "example-global-endpoint-bus"
+		eventBuses := terraform.OutputListOfObjects(t, opts, "event_bus")
+		require.Len(t, eventBuses, 2, "event_bus output should contain two buses")
+
+		eventBusARNValue, ok := eventBuses[0]["event_bus_arn"]
+		require.True(t, ok, "event_bus output should include event_bus_arn")
+
+		eventBusARN, ok := eventBusARNValue.(string)
+		require.True(t, ok, "event_bus_arn output should be a string")
+
+		eventBusName := eventBusNameFromARN(t, eventBusARN)
 
 		result, err := client.PutEvents(context.Background(), &eventbridge.PutEventsInput{
 			EndpointId: aws.String(endpointID),
@@ -115,7 +145,7 @@ func TestComposableCompleteReadonly(t *testing.T, ctx types.TestContext) {
 		arn := terraform.Output(t, opts, "arn")
 
 		assert.Equal(t, name, id, "id should equal name for EventBridge global endpoint")
-		require.NotEmpty(t, arn, "arn should be set")
+		require.True(t, eventEndpointARNPattern.MatchString(arn), "arn should match EventBridge endpoint ARN format")
 	})
 
 	t.Run("VerifyEndpointExistsViaAPI", func(t *testing.T) {
@@ -148,6 +178,10 @@ func TestComposableCompleteReadonly(t *testing.T, ctx types.TestContext) {
 		require.NotNil(t, output.RoutingConfig.FailoverConfig.Secondary, "secondary config should be present")
 
 		secondaryRoute := aws.ToString(output.RoutingConfig.FailoverConfig.Secondary.Route)
-		require.NotEmpty(t, secondaryRoute, "secondary route should be set")
+		expectedRoutingConfig := terraform.OutputMap(t, opts, "routing_config")
+		expectedSecondaryRoute := expectedRoutingConfig["secondary_route"]
+
+		require.NotEmpty(t, expectedSecondaryRoute, "routing_config.secondary_route output should be set")
+		assert.Equal(t, expectedSecondaryRoute, secondaryRoute, "secondary route should match Terraform output")
 	})
 }

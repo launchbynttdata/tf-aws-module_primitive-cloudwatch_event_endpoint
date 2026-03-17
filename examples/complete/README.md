@@ -13,6 +13,10 @@ This example creates an EventBridge global endpoint with:
 module "event_endpoint" {
   source = "../.."
 
+  providers = {
+    aws = aws.primary
+  }
+
   name        = module.resource_names["event_endpoint"].standard
   description = var.description
 
@@ -26,10 +30,8 @@ module "event_endpoint" {
     secondary_route          = local.secondary_region
   }
 
-  role_arn           = var.replication_config != null && var.replication_config.state == "ENABLED" ? aws_iam_role.replication[0].arn : null
+  role_arn           = local.replication_enabled ? aws_iam_role.replication[0].arn : null
   replication_config = var.replication_config
-
-  tags = var.tags
 }
 ```
 
