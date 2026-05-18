@@ -71,12 +71,6 @@ pre-commit install --hook-type commit-msg
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~> 1.5 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 5.14 |
 
-## Providers
-
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.100.0 |
-
 ## Modules
 
 No modules.
@@ -91,23 +85,23 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_name"></a> [name](#input\_name) | The name of the global endpoint. Maximum of 64 characters consisting of numbers, lower/upper case letters, ., -, \_. | `string` | n/a | yes |
 | <a name="input_description"></a> [description](#input\_description) | A description of the global endpoint. | `string` | `null` | no |
 | <a name="input_event_bus"></a> [event\_bus](#input\_event\_bus) | List of exactly two event bus configurations. Each must have event\_bus\_arn.<br/>Event bus names must be identical across regions for custom buses. | <pre>list(object({<br/>    event_bus_arn = string<br/>  }))</pre> | n/a | yes |
-| <a name="input_routing_config"></a> [routing\_config](#input\_routing\_config) | Routing configuration for failover.<br/>- primary\_health\_check\_arn: ARN of the Route 53 health check that triggers failover when unhealthy.<br/>- secondary\_route: The secondary region name (e.g., us-west-2) for failover routing. | <pre>object({<br/>    primary_health_check_arn = string<br/>    secondary_route          = string<br/>  })</pre> | n/a | yes |
-| <a name="input_role_arn"></a> [role\_arn](#input\_role\_arn) | The ARN of the IAM role used for replication between event buses. | `string` | `null` | no |
+| <a name="input_name"></a> [name](#input\_name) | The name of the global endpoint. Maximum of 64 characters consisting of numbers, lower/upper case letters, ., -, \_. | `string` | n/a | yes |
 | <a name="input_replication_config"></a> [replication\_config](#input\_replication\_config) | Replication configuration. When null, replication is not explicitly set (provider default: ENABLED).<br/>- state: ENABLED or DISABLED. ENABLED replicates events to both regions. | <pre>object({<br/>    state = string<br/>  })</pre> | `null` | no |
+| <a name="input_role_arn"></a> [role\_arn](#input\_role\_arn) | The ARN of the IAM role used for replication between event buses. | `string` | `null` | no |
+| <a name="input_routing_config"></a> [routing\_config](#input\_routing\_config) | Routing configuration for failover.<br/>- primary\_health\_check\_arn: ARN of the Route 53 health check that triggers failover when unhealthy.<br/>- secondary\_route: The secondary region name (e.g., us-west-2) for failover routing. | <pre>object({<br/>    primary_health_check_arn = string<br/>    secondary_route          = string<br/>  })</pre> | n/a | yes |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| <a name="output_id"></a> [id](#output\_id) | The ID of the resource (same as the name). |
 | <a name="output_arn"></a> [arn](#output\_arn) | The ARN of the global endpoint. |
-| <a name="output_name"></a> [name](#output\_name) | The name of the global endpoint. |
-| <a name="output_endpoint_url"></a> [endpoint\_url](#output\_endpoint\_url) | The URL of the endpoint used for publishing events. |
 | <a name="output_description"></a> [description](#output\_description) | The description of the global endpoint. |
+| <a name="output_endpoint_url"></a> [endpoint\_url](#output\_endpoint\_url) | The URL of the endpoint used for publishing events. |
 | <a name="output_event_bus"></a> [event\_bus](#output\_event\_bus) | The event buses associated with the endpoint. |
+| <a name="output_id"></a> [id](#output\_id) | The ID of the resource (same as the name). |
+| <a name="output_name"></a> [name](#output\_name) | The name of the global endpoint. |
 | <a name="output_replication_config"></a> [replication\_config](#output\_replication\_config) | The replication configuration of the endpoint. |
 | <a name="output_role_arn"></a> [role\_arn](#output\_role\_arn) | The ARN of the IAM role used for replication. |
 | <a name="output_routing_config"></a> [routing\_config](#output\_routing\_config) | The routing configuration including failover settings. |
