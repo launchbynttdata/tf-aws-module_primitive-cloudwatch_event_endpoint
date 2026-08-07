@@ -20,7 +20,7 @@ import (
 var eventEndpointARNPattern = regexp.MustCompile(`^arn:aws[^:]*:events:[a-z0-9-]+:[0-9]{12}:endpoint/.+$`)
 
 func getEventBridgeClient(t *testing.T, opts *terraform.Options) *eventbridge.Client {
-	region := terraform.Output(t, opts, "primary_region")
+	region := terraform.OutputContext(t, context.Background(), opts, "primary_region")
 	require.NotEmpty(t, region, "primary_region output required for API calls")
 
 	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
@@ -43,10 +43,10 @@ func eventBusNameFromARN(t *testing.T, eventBusARN string) string {
 func TestComposableComplete(t *testing.T, ctx types.TestContext) {
 	t.Run("VerifyTerraformOutputs", func(t *testing.T) {
 		opts := ctx.TerratestTerraformOptions()
-		id := terraform.Output(t, opts, "id")
-		name := terraform.Output(t, opts, "name")
-		arn := terraform.Output(t, opts, "arn")
-		endpointURL := terraform.Output(t, opts, "endpoint_url")
+		id := terraform.OutputContext(t, context.Background(), opts, "id")
+		name := terraform.OutputContext(t, context.Background(), opts, "name")
+		arn := terraform.OutputContext(t, context.Background(), opts, "arn")
+		endpointURL := terraform.OutputContext(t, context.Background(), opts, "endpoint_url")
 
 		assert.Equal(t, name, id, "id should equal name for EventBridge global endpoint")
 		require.True(t, eventEndpointARNPattern.MatchString(arn), "arn should match EventBridge endpoint ARN format")
@@ -59,9 +59,9 @@ func TestComposableComplete(t *testing.T, ctx types.TestContext) {
 
 	t.Run("VerifyEndpointViaAWSAPI", func(t *testing.T) {
 		opts := ctx.TerratestTerraformOptions()
-		endpointName := terraform.Output(t, opts, "name")
-		expectedARN := terraform.Output(t, opts, "arn")
-		expectedEndpointURL := terraform.Output(t, opts, "endpoint_url")
+		endpointName := terraform.OutputContext(t, context.Background(), opts, "name")
+		expectedARN := terraform.OutputContext(t, context.Background(), opts, "arn")
+		expectedEndpointURL := terraform.OutputContext(t, context.Background(), opts, "endpoint_url")
 
 		client := getEventBridgeClient(t, opts)
 		output, err := client.DescribeEndpoint(context.Background(), &eventbridge.DescribeEndpointInput{
@@ -79,8 +79,8 @@ func TestComposableComplete(t *testing.T, ctx types.TestContext) {
 
 	t.Run("VerifyReplicationConfigViaAPI", func(t *testing.T) {
 		opts := ctx.TerratestTerraformOptions()
-		endpointName := terraform.Output(t, opts, "name")
-		expectedRoleARN := terraform.Output(t, opts, "role_arn")
+		endpointName := terraform.OutputContext(t, context.Background(), opts, "name")
+		expectedRoleARN := terraform.OutputContext(t, context.Background(), opts, "role_arn")
 
 		client := getEventBridgeClient(t, opts)
 		output, err := client.DescribeEndpoint(context.Background(), &eventbridge.DescribeEndpointInput{
@@ -98,7 +98,7 @@ func TestComposableComplete(t *testing.T, ctx types.TestContext) {
 
 	t.Run("PutEventsToEndpoint", func(t *testing.T) {
 		opts := ctx.TerratestTerraformOptions()
-		endpointName := terraform.Output(t, opts, "name")
+		endpointName := terraform.OutputContext(t, context.Background(), opts, "name")
 		require.NotEmpty(t, endpointName, "endpoint name must be set for PutEvents test")
 
 		client := getEventBridgeClient(t, opts)
@@ -109,7 +109,7 @@ func TestComposableComplete(t *testing.T, ctx types.TestContext) {
 		endpointID := aws.ToString(desc.EndpointId)
 		require.NotEmpty(t, endpointID, "DescribeEndpoint must return EndpointId for PutEvents")
 
-		eventBuses := terraform.OutputListOfObjects(t, opts, "event_bus")
+		eventBuses := terraform.OutputListOfObjectsContext(t, context.Background(), opts, "event_bus")
 		require.Len(t, eventBuses, 2, "event_bus output should contain two buses")
 
 		eventBusARNValue, ok := eventBuses[0]["event_bus_arn"]
@@ -140,9 +140,9 @@ func TestComposableComplete(t *testing.T, ctx types.TestContext) {
 func TestComposableCompleteReadonly(t *testing.T, ctx types.TestContext) {
 	t.Run("VerifyTerraformOutputsReadonly", func(t *testing.T) {
 		opts := ctx.TerratestTerraformOptions()
-		id := terraform.Output(t, opts, "id")
-		name := terraform.Output(t, opts, "name")
-		arn := terraform.Output(t, opts, "arn")
+		id := terraform.OutputContext(t, context.Background(), opts, "id")
+		name := terraform.OutputContext(t, context.Background(), opts, "name")
+		arn := terraform.OutputContext(t, context.Background(), opts, "arn")
 
 		assert.Equal(t, name, id, "id should equal name for EventBridge global endpoint")
 		require.True(t, eventEndpointARNPattern.MatchString(arn), "arn should match EventBridge endpoint ARN format")
@@ -150,7 +150,7 @@ func TestComposableCompleteReadonly(t *testing.T, ctx types.TestContext) {
 
 	t.Run("VerifyEndpointExistsViaAPI", func(t *testing.T) {
 		opts := ctx.TerratestTerraformOptions()
-		endpointName := terraform.Output(t, opts, "name")
+		endpointName := terraform.OutputContext(t, context.Background(), opts, "name")
 
 		client := getEventBridgeClient(t, opts)
 		output, err := client.DescribeEndpoint(context.Background(), &eventbridge.DescribeEndpointInput{
@@ -166,7 +166,7 @@ func TestComposableCompleteReadonly(t *testing.T, ctx types.TestContext) {
 
 	t.Run("VerifyRoutingConfigViaAPI", func(t *testing.T) {
 		opts := ctx.TerratestTerraformOptions()
-		endpointName := terraform.Output(t, opts, "name")
+		endpointName := terraform.OutputContext(t, context.Background(), opts, "name")
 
 		client := getEventBridgeClient(t, opts)
 		output, err := client.DescribeEndpoint(context.Background(), &eventbridge.DescribeEndpointInput{
@@ -178,7 +178,7 @@ func TestComposableCompleteReadonly(t *testing.T, ctx types.TestContext) {
 		require.NotNil(t, output.RoutingConfig.FailoverConfig.Secondary, "secondary config should be present")
 
 		secondaryRoute := aws.ToString(output.RoutingConfig.FailoverConfig.Secondary.Route)
-		expectedRoutingConfig := terraform.OutputMap(t, opts, "routing_config")
+		expectedRoutingConfig := terraform.OutputMapContext(t, context.Background(), opts, "routing_config")
 		expectedSecondaryRoute := expectedRoutingConfig["secondary_route"]
 
 		require.NotEmpty(t, expectedSecondaryRoute, "routing_config.secondary_route output should be set")
