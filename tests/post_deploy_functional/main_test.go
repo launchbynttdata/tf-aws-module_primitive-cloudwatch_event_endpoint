@@ -22,7 +22,7 @@ import (
 
 const (
 	testConfigsExamplesFolderDefault = "../../examples/complete"
-	infraTFVarFileNameDefault       = "test.tfvars"
+	infraTFVarFileNameDefault        = "test.tfvars"
 )
 
 func TestCloudWatchEventEndpoint(t *testing.T) {
