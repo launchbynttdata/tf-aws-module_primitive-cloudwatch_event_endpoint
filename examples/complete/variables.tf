@@ -20,9 +20,11 @@ variable "secondary_region" {
   type        = string
 }
 
-variable "event_bus_name" {
-  description = "Name of the event bus (must be identical in both regions)."
+variable "resource_names_strategy" {
   type        = string
+  description = "Strategy to use for generating resource names, taken from the outputs of the naming module, e.g. 'standard', 'minimal_random_suffix', 'dns_compliant_standard', etc."
+  nullable    = false
+  default     = "minimal_random_suffix"
 }
 
 variable "description" {

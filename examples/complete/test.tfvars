@@ -1,6 +1,5 @@
 primary_region   = "us-east-1"
 secondary_region = "us-west-2"
-event_bus_name   = "example-global-endpoint-bus"
 
 description = "Example EventBridge global endpoint for regional fault tolerance"
 
@@ -15,6 +14,10 @@ resource_names_map = {
   }
   iam_role = {
     name       = "role"
+    max_length = 64
+  }
+  event_bus = {
+    name       = "bus"
     max_length = 64
   }
 }

@@ -5,7 +5,7 @@ This example creates an EventBridge global endpoint with:
 - Event buses in primary (us-east-1) and secondary (us-west-2) regions
 - Route 53 health check for failover triggering
 - IAM role for event replication
-- Resource naming via the resource_name module
+- Resource naming via the resource_name module, with a random suffix by default so concurrent or leaked test runs don't collide
 
 ## Usage
 
@@ -17,7 +17,7 @@ module "event_endpoint" {
     aws = aws.primary
   }
 
-  name        = module.resource_names["event_endpoint"].standard
+  name        = module.resource_names["event_endpoint"][var.resource_names_strategy]
   description = var.description
 
   event_bus = [
@@ -32,6 +32,8 @@ module "event_endpoint" {
 
   role_arn           = local.replication_enabled ? aws_iam_role.replication[0].arn : null
   replication_config = var.replication_config
+
+  depends_on = [aws_iam_role_policy.replication]
 }
 ```
 
@@ -41,7 +43,7 @@ module "event_endpoint" {
 |------|-------------|------|---------|:--------:|
 | primary_region | The primary AWS region for the global endpoint. | `string` | n/a | yes |
 | secondary_region | The secondary AWS region for failover. | `string` | n/a | yes |
-| event_bus_name | Name of the event bus (must be identical in both regions). | `string` | n/a | yes |
+| resource_names_strategy | Strategy to use for generating resource names, taken from the outputs of the naming module. | `string` | `"minimal_random_suffix"` | no |
 | description | Description of the global endpoint. | `string` | `null` | no |
 | replication_config | Replication configuration. ENABLED requires role_arn. | `object({ state = string })` | `null` | no |
 | resource_names_map | Map of resource names for the resource_name module. | `map(object({ name = string, max_length = optional(number, 60) }))` | n/a | yes |
@@ -99,7 +101,6 @@ module "event_endpoint" {
 |------|-------------|------|---------|:--------:|
 | <a name="input_class_env"></a> [class\_env](#input\_class\_env) | Class environment for resource naming. | `string` | n/a | yes |
 | <a name="input_description"></a> [description](#input\_description) | Description of the global endpoint. | `string` | `null` | no |
-| <a name="input_event_bus_name"></a> [event\_bus\_name](#input\_event\_bus\_name) | Name of the event bus (must be identical in both regions). | `string` | n/a | yes |
 | <a name="input_instance_env"></a> [instance\_env](#input\_instance\_env) | Instance environment for resource naming. | `number` | n/a | yes |
 | <a name="input_instance_resource"></a> [instance\_resource](#input\_instance\_resource) | Instance resource for resource naming. | `number` | n/a | yes |
 | <a name="input_logical_product_family"></a> [logical\_product\_family](#input\_logical\_product\_family) | Logical product family for resource naming. | `string` | n/a | yes |
@@ -107,6 +108,7 @@ module "event_endpoint" {
 | <a name="input_primary_region"></a> [primary\_region](#input\_primary\_region) | The primary AWS region for the global endpoint. | `string` | n/a | yes |
 | <a name="input_replication_config"></a> [replication\_config](#input\_replication\_config) | Replication configuration. ENABLED requires role\_arn. | <pre>object({<br/>    state = string<br/>  })</pre> | `null` | no |
 | <a name="input_resource_names_map"></a> [resource\_names\_map](#input\_resource\_names\_map) | Map of resource names for the resource\_name module. | <pre>map(object({<br/>    name       = string<br/>    max_length = optional(number, 60)<br/>  }))</pre> | n/a | yes |
+| <a name="input_resource_names_strategy"></a> [resource\_names\_strategy](#input\_resource\_names\_strategy) | Strategy to use for generating resource names, taken from the outputs of the naming module, e.g. 'standard', 'minimal\_random\_suffix', 'dns\_compliant\_standard', etc. | `string` | `"minimal_random_suffix"` | no |
 | <a name="input_secondary_region"></a> [secondary\_region](#input\_secondary\_region) | The secondary AWS region for failover. | `string` | n/a | yes |
 | <a name="input_tags"></a> [tags](#input\_tags) | Map of tags to assign to resources. | `map(string)` | `{}` | no |
 
