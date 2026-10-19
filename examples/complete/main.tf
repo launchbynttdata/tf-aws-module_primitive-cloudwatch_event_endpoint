@@ -177,4 +177,8 @@ module "event_endpoint" {
 
   role_arn           = local.replication_enabled ? aws_iam_role.replication[0].arn : null
   replication_config = var.replication_config
+
+  # Deleting an endpoint with replication needs the role's events:RemoveTargets
+  # permission, so the policy must outlive the endpoint on destroy.
+  depends_on = [aws_iam_role_policy.replication]
 }
