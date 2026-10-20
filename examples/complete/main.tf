@@ -29,8 +29,9 @@ locals {
   secondary_region = var.secondary_region
   account_id       = data.aws_caller_identity.current.account_id
 
-  primary_event_bus_arn   = "arn:aws:events:${local.primary_region}:${local.account_id}:event-bus/${var.event_bus_name}"
-  secondary_event_bus_arn = "arn:aws:events:${local.secondary_region}:${local.account_id}:event-bus/${var.event_bus_name}"
+  event_bus_name          = module.resource_names["event_bus"][var.resource_names_strategy]
+  primary_event_bus_arn   = "arn:aws:events:${local.primary_region}:${local.account_id}:event-bus/${local.event_bus_name}"
+  secondary_event_bus_arn = "arn:aws:events:${local.secondary_region}:${local.account_id}:event-bus/${local.event_bus_name}"
 
   replication_enabled = var.replication_config != null ? var.replication_config.state == "ENABLED" : false
 }
@@ -57,14 +58,14 @@ module "resource_names" {
 resource "aws_cloudwatch_event_bus" "primary" {
   provider = aws.primary
 
-  name = var.event_bus_name
+  name = local.event_bus_name
   tags = var.tags
 }
 
 resource "aws_cloudwatch_event_bus" "secondary" {
   provider = aws.secondary
 
-  name = var.event_bus_name
+  name = local.event_bus_name
   tags = var.tags
 }
 
@@ -88,7 +89,7 @@ resource "aws_route53_health_check" "endpoint" {
 resource "aws_iam_role" "replication" {
   count = local.replication_enabled ? 1 : 0
 
-  name = module.resource_names["iam_role"].standard
+  name = module.resource_names["iam_role"][var.resource_names_strategy]
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -109,7 +110,7 @@ resource "aws_iam_role" "replication" {
 resource "aws_iam_role_policy" "replication" {
   count = local.replication_enabled ? 1 : 0
 
-  name = "${module.resource_names["iam_role"].standard}-replication"
+  name = "${module.resource_names["iam_role"][var.resource_names_strategy]}-replication"
   role = aws_iam_role.replication[0].id
 
   policy = jsonencode({
@@ -136,8 +137,8 @@ resource "aws_iam_role_policy" "replication" {
         Resource = [
           local.primary_event_bus_arn,
           local.secondary_event_bus_arn,
-          "arn:aws:events:${local.primary_region}:${local.account_id}:rule/${var.event_bus_name}/*",
-          "arn:aws:events:${local.secondary_region}:${local.account_id}:rule/${var.event_bus_name}/*"
+          "arn:aws:events:${local.primary_region}:${local.account_id}:rule/${local.event_bus_name}/*",
+          "arn:aws:events:${local.secondary_region}:${local.account_id}:rule/${local.event_bus_name}/*"
         ]
       },
       {
@@ -162,7 +163,7 @@ module "event_endpoint" {
     aws = aws.primary
   }
 
-  name        = module.resource_names["event_endpoint"].standard
+  name        = module.resource_names["event_endpoint"][var.resource_names_strategy]
   description = var.description
 
   event_bus = [
@@ -177,4 +178,8 @@ module "event_endpoint" {
 
   role_arn           = local.replication_enabled ? aws_iam_role.replication[0].arn : null
   replication_config = var.replication_config
+
+  # Deleting an endpoint with replication needs the role's events:RemoveTargets
+  # permission, so the policy must outlive the endpoint on destroy.
+  depends_on = [aws_iam_role_policy.replication]
 }
